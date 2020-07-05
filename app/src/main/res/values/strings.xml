@@ -2,5 +2,5 @@
     <string name="app_name">Veterinary Clinic Info App</string>
     <string name="button_chat">Chat</string>
     <string name="button_call">Call</string>
-    <string name="office_hours">Office Hours: ----</string>
+    <string name="office_hours">Office Hours: %s </string>
 </resources>
