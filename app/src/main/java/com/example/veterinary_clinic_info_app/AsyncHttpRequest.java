@@ -5,9 +5,14 @@ import android.os.AsyncTask;
 import android.util.Log;
 import android.widget.TextView;
 
+import org.json.JSONObject;
+
 import java.lang.ref.WeakReference;
 
-public class AsyncHttpRequest extends AsyncTask<String,Void,String> {
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+
+public class AsyncHttpRequest extends AsyncTask<String,Void,JSONObject> {
     private final WeakReference<Activity> weakActivity;
 
     public AsyncHttpRequest(Activity activity) {
@@ -23,22 +28,26 @@ public class AsyncHttpRequest extends AsyncTask<String,Void,String> {
     }
 
     @Override
-    protected String doInBackground(String... params) {
+    protected JSONObject doInBackground(String... params) {
         Log.i("TecnicTest", "doInBackground");
 
+
+        OkHttpClient client = new OkHttpClient();
+        Request request = new Request.Builder().url(params[0]).build();
+
         //ここにjson取得処理
-        try {
-            Thread.sleep(5000);
-        } catch(InterruptedException ex) {
-            Thread.currentThread().interrupt();
-        }
+//        try {
+//
+//        } catch(InterruptedException ex) {
+//            Thread.currentThread().interrupt();
+//        }
 
         return null;
     }
 
     @Override
-    protected void onPostExecute(String result) {
-        super.onPostExecute(result);
+    protected void onPostExecute(JSONObject json) {
+        super.onPostExecute(json);
         Log.i("TecnicTest", "onPostExecute");
         //todo必要ならなんか入れる
         Activity activity = weakActivity.get();
