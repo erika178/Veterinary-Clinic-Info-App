@@ -12,13 +12,20 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import org.jetbrains.annotations.NotNull;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 
 import okhttp3.Call;
 import okhttp3.Callback;
+import okhttp3.OkHttp;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -71,26 +78,27 @@ public class MainActivity extends AppCompatActivity {
 
         client.newCall(requestConfig).enqueue(new Callback() {
             final Handler mainHandler = new Handler(Looper.getMainLooper());
+
             @Override
             public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException {
-
-            String responseBody = response.body().string();
+                String responseBody = response.body().string();
                 Log.i("TecnicTest", "onResponse " + "responsecode => " + response.code() + "responsebody => " + responseBody);
                 //ここにパースとか
                 if (response.code() == RESPONSE_CODE_SUCCESS) {
                     try {
-                        JSONObject jsonRoot = new JSONObject(responseBody);
-                        JSONObject jsonSetting = (JSONObject) jsonRoot.get("settings");
-                        boolean isChatEnabled = jsonSetting.getBoolean("isChatEnabled");
-                        boolean isCallEnabled = jsonSetting.getBoolean("isCallEnabled");
-                        String workHours = jsonSetting.getString("workHours");
+                        JSONObject jsonObject = new JSONObject(responseBody).getJSONObject("settings");
+//                        boolean isChatEnabled = jsonSetting.getBoolean("isChatEnabled");
+//                        boolean isCallEnabled = jsonSetting.getBoolean("isCallEnabled");
+//                        String workHours = jsonSetting.getString("workHours");
+                        //変数に入れた方がいい？
+                        Config config = new Config(jsonObject.getBoolean("isChatEnabled"), jsonObject.getBoolean("isCallEnabled"), jsonObject.getString("workHours"));
 
-                        Log.i("TecnicTest", "isChatEnabled " + isChatEnabled);
-                        Log.i("TecnicTest", "isCallEnabled " + isCallEnabled);
+                        Log.i("TecnicTest", "isChatEnabled " + config.getSettings().isChatEnabled());
+                        Log.i("TecnicTest", "isCallEnabled " + config.getSettings().isCallEnabled());
                         mainHandler.post(() -> {
-                            setButtonVisible(buttonChat,isChatEnabled);
-                            setButtonVisible(buttonCall,isCallEnabled);
-                            setWorkhours(workHours);
+                            setButtonVisible(buttonChat, config.getSettings().isChatEnabled());
+                            setButtonVisible(buttonCall, config.getSettings().isCallEnabled());
+                            setWorkhours(config.getSettings().getWorkHours());
                         });
 
                     } catch (JSONException je) {
@@ -98,7 +106,7 @@ public class MainActivity extends AppCompatActivity {
                     }
 
 
-                }else {
+                } else {
 //                    //エラー
 
 //                    //これだとアプリ落ちたかも
@@ -117,8 +125,6 @@ public class MainActivity extends AppCompatActivity {
 //                    });
 
                 }
-
-
 
                 mainHandler.post(() -> hideProgress(progressBarConfig));
             }
@@ -143,17 +149,51 @@ public class MainActivity extends AppCompatActivity {
 
         client.newCall(requestPets).enqueue(new Callback() {
             final Handler mainHandler = new Handler(Looper.getMainLooper());
+
             @Override
             public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException {
-                Log.i("TecnicTest", "onResponse " +"responsecode => " + response.code() +"responsebody => " + response.body().string());
+                String responseBody = response.body().string();
+                Log.i("TecnicTest", "onResponse " + "responsecode => " + response.code() + "responsebody => " + responseBody);
                 //ここにパースとか
-                mainHandler.post(() -> hideProgress(progressBarConfig));
+                if (response.code() == RESPONSE_CODE_SUCCESS) {
+                    try {
+                        JSONArray jsonArray = new JSONObject(responseBody).getJSONArray("pets");
+                        List<Pet> pets = new ArrayList<>();
+                        SimpleDateFormat sdFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+                        for (int i = 0; i < jsonArray.length(); i++) {
+                            JSONObject jsonObject = jsonArray.getJSONObject(i);
+
+                            //変数に入れた方がいい？
+                            Pet pet = new Pet(jsonObject.getString("image_url"),
+                                    jsonObject.getString("title"),
+                                    jsonObject.getString("content_url"),
+                                    sdFormat.parse(jsonObject.getString("date_added")));
+                            pets.add(pet);
+
+                            Log.i("TecnicTest", "[[[pet : " + i+ " ]]] "+ pets.get(i).getTitle()+"///"+sdFormat.format(pets.get(i).getDate_added()));
+
+
+                        }
+
+
+                    } catch (JSONException je) {
+                        Log.i("TecnicTest", "Json parse error!");
+                    } catch (ParseException e){
+                        Log.i("TecnicTest", "Json date parse error!"+e.getMessage());
+
+                    }
+
+                } else {
+
+
+                }
+                mainHandler.post(() -> hideProgress(progressBarPets));
             }
 
             @Override
             public void onFailure(@NotNull Call call, @NotNull IOException e) {
                 Log.i("TecnicTest", "onFailure " + e.getMessage());
-                mainHandler.post(() -> hideProgress(progressBarConfig));
+                mainHandler.post(() -> hideProgress(progressBarPets));
             }
         });
 
@@ -177,8 +217,8 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void setWorkhours(String workhours){
-        textView.setText(String.format(getString(R.string.office_hours),workhours));
+    private void setWorkhours(String workhours) {
+        textView.setText(String.format(getString(R.string.office_hours), workhours));
     }
 
     @Override
