@@ -3,16 +3,17 @@ package com.example.veterinary_clinic_info_app;
 import java.util.Date;
 
 public class Pet {
+    //todo camelcase
     private String image_url;
     private String title;
     private String content_url;
-    private Date date_added;
+    private Date dateAdded;
 
-    public Pet(String image_url, String title, String content_url, Date date_added) {
+    public Pet(String image_url, String title, String content_url, Date dateAdded) {
         this.image_url = image_url;
         this.title = title;
         this.content_url = content_url;
-        this.date_added = date_added;
+        this.dateAdded = dateAdded;
     }
 
     public String getImage_url() {
@@ -27,7 +28,7 @@ public class Pet {
         return content_url;
     }
 
-    public Date getDate_added() {
-        return date_added;
+    public Date getDateAdded() {
+        return dateAdded;
     }
 }

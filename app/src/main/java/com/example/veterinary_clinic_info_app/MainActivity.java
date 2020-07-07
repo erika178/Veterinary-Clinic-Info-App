@@ -1,6 +1,8 @@
 package com.example.veterinary_clinic_info_app;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import android.os.Bundle;
 import android.os.Handler;
@@ -20,25 +22,24 @@ import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 import okhttp3.Call;
 import okhttp3.Callback;
-import okhttp3.OkHttp;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
 public class MainActivity extends AppCompatActivity {
 
+    private OkHttpClient client;
     private ProgressBar progressBarConfig;
     private ProgressBar progressBarPets;
     private Button buttonChat;
     private Button buttonCall;
     private TextView textView;
-
-    final int RESPONSE_CODE_SUCCESS = 200;
+    private PetsAdapter petsAdapter;
+    private List<Pet> pets = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,7 +48,7 @@ public class MainActivity extends AppCompatActivity {
 
         Log.i("TecnicTest", "onCreate");
         textView = findViewById(R.id.text_info);
-        setWorkhours("----");
+        setWorkHours("----");
 
         buttonChat = findViewById(R.id.button_chat);
         buttonChat.setOnClickListener(v -> {
@@ -62,15 +63,21 @@ public class MainActivity extends AppCompatActivity {
         progressBarConfig = findViewById(R.id.progressBarHorizontalConfig);
         progressBarPets = findViewById(R.id.progressBarHorizontalPets);
 
+        RecyclerView recyclerView = findViewById(R.id.recycler_view_pets);
+        recyclerView.setHasFixedSize(true);
+        RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(this);
+        recyclerView.setLayoutManager(layoutManager);
 
+        petsAdapter = new PetsAdapter(pets);
+        recyclerView.setAdapter(petsAdapter);
+
+        client = new OkHttpClient();
         fetchConfig();
         fetchPets();
-
     }
 
     private void fetchConfig() {
         showProgress(progressBarConfig);
-        OkHttpClient client = new OkHttpClient();
 
         Request requestConfig = new Request.Builder()
                 .url("https://www.amock.io/api/erika178/config.json")
@@ -81,32 +88,28 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException {
-                String responseBody = response.body().string();
-                Log.i("TecnicTest", "onResponse " + "responsecode => " + response.code() + "responsebody => " + responseBody);
-                //ここにパースとか
-                if (response.code() == RESPONSE_CODE_SUCCESS) {
+                Log.i("TecnicTest", "onResponse");
+                if (response.isSuccessful()) {
                     try {
-                        JSONObject jsonObject = new JSONObject(responseBody).getJSONObject("settings");
-//                        boolean isChatEnabled = jsonSetting.getBoolean("isChatEnabled");
-//                        boolean isCallEnabled = jsonSetting.getBoolean("isCallEnabled");
-//                        String workHours = jsonSetting.getString("workHours");
-                        //変数に入れた方がいい？
-                        Config config = new Config(jsonObject.getBoolean("isChatEnabled"), jsonObject.getBoolean("isCallEnabled"), jsonObject.getString("workHours"));
+                        JSONObject jsonObject = new JSONObject(response.body().string()).getJSONObject("settings");
+                        Config config = new Config(jsonObject.getBoolean("isChatEnabled"),
+                                jsonObject.getBoolean("isCallEnabled"),
+                                jsonObject.getString("workHours"));
 
-                        Log.i("TecnicTest", "isChatEnabled " + config.getSettings().isChatEnabled());
-                        Log.i("TecnicTest", "isCallEnabled " + config.getSettings().isCallEnabled());
                         mainHandler.post(() -> {
                             setButtonVisible(buttonChat, config.getSettings().isChatEnabled());
                             setButtonVisible(buttonCall, config.getSettings().isCallEnabled());
-                            setWorkhours(config.getSettings().getWorkHours());
+                            setWorkHours(config.getSettings().getWorkHours());
                         });
 
                     } catch (JSONException je) {
+                        //TODO Handle this exception
                         Log.i("TecnicTest", "Json parse error!");
                     }
 
 
                 } else {
+                    //TODO Handle this exception
 //                    //エラー
 
 //                    //これだとアプリ落ちたかも
@@ -123,7 +126,6 @@ public class MainActivity extends AppCompatActivity {
 //                            builder.show();
 //                        }
 //                    });
-
                 }
 
                 mainHandler.post(() -> hideProgress(progressBarConfig));
@@ -131,17 +133,15 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onFailure(@NotNull Call call, @NotNull IOException e) {
+                //TODO Handle this exception
                 Log.i("TecnicTest", "onFailure " + e.getMessage());
                 mainHandler.post(() -> hideProgress(progressBarConfig));
             }
         });
-
-        Log.i("TecnicTest", "after enqueue");
     }
 
     private void fetchPets() {
         showProgress(progressBarPets);
-        OkHttpClient client = new OkHttpClient();
 
         Request requestPets = new Request.Builder()
                 .url("https://www.amock.io/api/erika178/pets.json")
@@ -152,46 +152,41 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException {
-                String responseBody = response.body().string();
-                Log.i("TecnicTest", "onResponse " + "responsecode => " + response.code() + "responsebody => " + responseBody);
-                //ここにパースとか
-                if (response.code() == RESPONSE_CODE_SUCCESS) {
+                if (response.isSuccessful()) {
                     try {
-                        JSONArray jsonArray = new JSONObject(responseBody).getJSONArray("pets");
-                        List<Pet> pets = new ArrayList<>();
+                        JSONArray jsonArray = new JSONObject(response.body().string()).getJSONArray("pets");
+                        pets = new ArrayList<>();
                         SimpleDateFormat sdFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+
                         for (int i = 0; i < jsonArray.length(); i++) {
                             JSONObject jsonObject = jsonArray.getJSONObject(i);
 
-                            //変数に入れた方がいい？
                             Pet pet = new Pet(jsonObject.getString("image_url"),
                                     jsonObject.getString("title"),
                                     jsonObject.getString("content_url"),
                                     sdFormat.parse(jsonObject.getString("date_added")));
                             pets.add(pet);
-
-                            Log.i("TecnicTest", "[[[pet : " + i+ " ]]] "+ pets.get(i).getTitle()+"///"+sdFormat.format(pets.get(i).getDate_added()));
-
-
                         }
 
+                        mainHandler.post(() -> petsAdapter.updateData(pets));
 
                     } catch (JSONException je) {
-                        Log.i("TecnicTest", "Json parse error!");
-                    } catch (ParseException e){
-                        Log.i("TecnicTest", "Json date parse error!"+e.getMessage());
-
+                        //TODO Handle this exception
+                        Log.e("TecnicTest", "Json parse error!");
+                    } catch (ParseException e) {
+                        //TODO Handle this exception
+                        Log.i("TecnicTest", "Json date parse error!" + e.getMessage());
                     }
 
                 } else {
-
-
+                    //TODO Handle this exception
                 }
                 mainHandler.post(() -> hideProgress(progressBarPets));
             }
 
             @Override
             public void onFailure(@NotNull Call call, @NotNull IOException e) {
+                //TODO Handle this exception
                 Log.i("TecnicTest", "onFailure " + e.getMessage());
                 mainHandler.post(() -> hideProgress(progressBarPets));
             }
@@ -217,13 +212,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void setWorkhours(String workhours) {
-        textView.setText(String.format(getString(R.string.office_hours), workhours));
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        Log.i("TecnicTest", "onDestroy");
+    private void setWorkHours(String workHours) {
+        textView.setText(String.format(getString(R.string.office_hours), workHours));
     }
 }
