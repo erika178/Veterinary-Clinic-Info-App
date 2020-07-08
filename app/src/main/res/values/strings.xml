@@ -4,4 +4,8 @@
     <string name="button_call">Call</string>
     <string name="office_hours">Office Hours: %s </string>
     <string name="unknown">Unknown</string>
+    <string name="message_outside_work_hours">Work hours has ended. Please contact us again on the next work day</string>
+    <string name="message_within_work_hours">Thank you for getting in touch with us. We’ll get back to you as soon as possible</string>
+    <string name="error_message_json_invalid">Because the acquired data is invalid, the application will be terminated.</string>
+    <string name="dialog_button_ok">OK</string>
 </resources>

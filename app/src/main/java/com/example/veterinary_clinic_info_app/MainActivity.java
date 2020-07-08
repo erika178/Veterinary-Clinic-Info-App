@@ -1,9 +1,13 @@
 package com.example.veterinary_clinic_info_app;
 
+import androidx.annotation.RequiresApi;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.content.DialogInterface;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -21,8 +25,14 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
+import java.util.TimeZone;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -40,6 +50,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView textView;
     private PetsAdapter petsAdapter;
     private List<Pet> pets = new ArrayList<>();
+    private String WorkHours = "";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,12 +63,12 @@ public class MainActivity extends AppCompatActivity {
 
         buttonChat = findViewById(R.id.button_chat);
         buttonChat.setOnClickListener(v -> {
-            //ここに押下時の処理
+            checkWorkHours(WorkHours);
         });
 
         buttonCall = findViewById(R.id.button_call);
         buttonCall.setOnClickListener(v -> {
-            //ここに押下時の処理
+            checkWorkHours(WorkHours);
         });
 
         progressBarConfig = findViewById(R.id.progressBarHorizontalConfig);
@@ -99,33 +110,19 @@ public class MainActivity extends AppCompatActivity {
                         mainHandler.post(() -> {
                             setButtonVisible(buttonChat, config.getSettings().isChatEnabled());
                             setButtonVisible(buttonCall, config.getSettings().isCallEnabled());
-                            setWorkHours(config.getSettings().getWorkHours());
+                            WorkHours = config.getSettings().getWorkHours();
+                            setWorkHours(WorkHours);
                         });
 
                     } catch (JSONException je) {
                         //TODO Handle this exception
                         Log.i("TecnicTest", "Json parse error!");
+                        mainHandler.post(() -> showDialogAndFinish(getString(R.string.error_message_json_invalid)));
                     }
 
 
                 } else {
                     //TODO Handle this exception
-//                    //エラー
-
-//                    //これだとアプリ落ちたかも
-//                    mainHandler.post(new Runnable() {
-//                        @Override
-//                        public void run() {
-//                            AlertDialog.Builder builder = new AlertDialog.Builder(getApplicationContext());
-//                            builder.setMessage("Data get error!!")
-//                                    .setPositiveButton("OK", new DialogInterface.OnClickListener() {
-//                                        public void onClick(DialogInterface dialog, int id) {
-//                                            finish();
-//                                        }
-//                                    });
-//                            builder.show();
-//                        }
-//                    });
                 }
 
                 mainHandler.post(() -> hideProgress(progressBarConfig));
@@ -156,7 +153,7 @@ public class MainActivity extends AppCompatActivity {
                     try {
                         JSONArray jsonArray = new JSONObject(response.body().string()).getJSONArray("pets");
                         pets = new ArrayList<>();
-                        SimpleDateFormat sdFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+                        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
 
                         for (int i = 0; i < jsonArray.length(); i++) {
                             JSONObject jsonObject = jsonArray.getJSONObject(i);
@@ -164,7 +161,7 @@ public class MainActivity extends AppCompatActivity {
                             Pet pet = new Pet(jsonObject.getString("image_url"),
                                     jsonObject.getString("title"),
                                     jsonObject.getString("content_url"),
-                                    sdFormat.parse(jsonObject.getString("date_added")));
+                                    simpleDateFormat.parse(jsonObject.getString("date_added")));
                             pets.add(pet);
                         }
 
@@ -215,4 +212,100 @@ public class MainActivity extends AppCompatActivity {
     private void setWorkHours(String workHours) {
         textView.setText(String.format(getString(R.string.office_hours), workHours));
     }
+
+
+    private void checkWorkHours(String workHours) {
+        Calendar calendarToday = Calendar.getInstance(TimeZone.getDefault());
+        int todayOfWeek = calendarToday.get(Calendar.DAY_OF_WEEK);
+
+        try {
+            String[] workHoursSeparate = workHours.split(" ");
+
+            boolean isBetweenDayOfWeek = checkDayOfWeek(todayOfWeek, workHoursSeparate[0].split("-"));
+            if (!isBetweenDayOfWeek) {
+                showDialog(getString(R.string.message_outside_work_hours));
+                return;
+            }
+
+            boolean isBetweenHours = checkHours(calendarToday, workHoursSeparate);
+            if (!isBetweenHours) {
+                showDialog(getString(R.string.message_outside_work_hours));
+                return;
+            }
+
+            showDialog(getString(R.string.message_within_work_hours));
+
+        } catch (Exception e) {
+            Log.e("TecnicTest", "Json date parse error!" + e.getMessage());
+        }
+
+    }
+
+    private boolean checkHours(Calendar calendarToday, String[] workHours) throws ParseException {
+
+        Calendar calendarFrom = parseHour(calendarToday, workHours[1]);
+        Calendar calendarTo = parseHour(calendarToday, workHours[3]);
+
+        Log.i("TecnicTest", "Today : " + calendarToday.getTime());
+        Log.i("TecnicTest", "From : " + calendarFrom.getTime());
+        Log.i("TecnicTest", "To : " + calendarTo.getTime());
+
+        if (calendarToday.after(calendarFrom) && calendarToday.before(calendarTo)) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    private Calendar parseHour(Calendar calendarToday, String workHour) throws ParseException {
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("HH:mm");
+        Date dateFormatHours = simpleDateFormat.parse(workHour);
+        Calendar calendar = Calendar.getInstance(TimeZone.getDefault());
+        calendar.setTime(dateFormatHours);
+        calendar.set(calendarToday.get(Calendar.YEAR), calendarToday.get(Calendar.MONTH), calendarToday.get(Calendar.DATE));
+        return calendar;
+    }
+
+    private boolean checkDayOfWeek(int todayOfWeek, String[] workDayFromTo) throws ParseException {
+        int workDayFrom = parseDayOfWeek(workDayFromTo[0]);
+        int workDayTo = parseDayOfWeek(workDayFromTo[1]);
+        if (workDayFrom <= todayOfWeek && todayOfWeek <= workDayTo) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    private static int parseDayOfWeek(String day) throws ParseException {
+        SimpleDateFormat dayFormat = new SimpleDateFormat("EEE");
+        Date date = dayFormat.parse(day);
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(date);
+        int dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK);
+        return dayOfWeek;
+    }
+
+    private void showDialog(String message) {
+//        AlertDialog.Builder builder = new AlertDialog.Builder(getApplicationContext());//MainActivity.thisを指定しないとクラッシュする
+        AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+        builder.setMessage(message)
+                .setPositiveButton(R.string.dialog_button_ok, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int id) {
+                        dialog.dismiss();
+                    }
+                });
+        builder.show();
+    }
+
+    private void showDialogAndFinish(String message) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+        builder.setMessage(message)
+                .setPositiveButton(R.string.dialog_button_ok, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int id) {
+                        finishAndRemoveTask();//これでいいかどうか確認
+                    }
+                });
+        builder.show();
+    }
+
 }
