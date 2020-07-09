@@ -117,7 +117,7 @@ public class MainActivity extends AppCompatActivity {
                     } catch (JSONException je) {
                         //TODO Handle this exception
                         Log.i("TecnicTest", "Json parse error!");
-                        mainHandler.post(() -> showDialogAndFinish(getString(R.string.error_message_json_invalid)));
+                        mainHandler.post(() -> showDialogAndFinish(getString(R.string.title_data_invalid),getString(R.string.error_message_json_invalid)));
                     }
 
 
@@ -221,36 +221,38 @@ public class MainActivity extends AppCompatActivity {
         try {
             String[] workHoursSeparate = workHours.split(" ");
 
-            boolean isBetweenDayOfWeek = checkDayOfWeek(todayOfWeek, workHoursSeparate[0].split("-"));
+            //todo jsonデータからの切り出しはデータ取得時に移す。ここでは比較だけ
+            String workDayFrom = workHoursSeparate[0].split("-")[0];
+            String workDayTo = workHoursSeparate[0].split("-")[1];
+            boolean isBetweenDayOfWeek = checkDayOfWeek(todayOfWeek, workDayFrom,workDayTo);
             if (!isBetweenDayOfWeek) {
-                showDialog(getString(R.string.message_outside_work_hours));
+                showDialog(getString(R.string.title_closed),getString(R.string.message_outside_work_hours));
                 return;
             }
 
-            boolean isBetweenHours = checkHours(calendarToday, workHoursSeparate);
+            boolean isBetweenHours = checkHours(calendarToday, workHoursSeparate[1],workHoursSeparate[3]);
             if (!isBetweenHours) {
-                showDialog(getString(R.string.message_outside_work_hours));
+                showDialog(getString(R.string.title_closed),getString(R.string.message_outside_work_hours));
                 return;
             }
 
-            showDialog(getString(R.string.message_within_work_hours));
+            showDialog(getString(R.string.title_open),getString(R.string.message_within_work_hours));
 
+            //TODO exception
         } catch (Exception e) {
             Log.e("TecnicTest", "Json date parse error!" + e.getMessage());
         }
 
     }
 
-    private boolean checkHours(Calendar calendarToday, String[] workHours) throws ParseException {
+    //TODO from, to param->OK
+    private boolean checkHours(Calendar calendarToday, String workHourFrom, String workHourTo) throws ParseException {
 
-        Calendar calendarFrom = parseHour(calendarToday, workHours[1]);
-        Calendar calendarTo = parseHour(calendarToday, workHours[3]);
+        Calendar calendarFrom = parseHour(calendarToday, workHourFrom);
+        Calendar calendarTo = parseHour(calendarToday, workHourTo);
 
-        Log.i("TecnicTest", "Today : " + calendarToday.getTime());
-        Log.i("TecnicTest", "From : " + calendarFrom.getTime());
-        Log.i("TecnicTest", "To : " + calendarTo.getTime());
-
-        if (calendarToday.after(calendarFrom) && calendarToday.before(calendarTo)) {
+        //TODO inclusive from->【保留】多分秒まで見てるんで、実装しても検証が難しそう
+        if ((calendarToday.after(calendarFrom) && calendarToday.before(calendarTo))) {
             return true;
         } else {
             return false;
@@ -266,14 +268,11 @@ public class MainActivity extends AppCompatActivity {
         return calendar;
     }
 
-    private boolean checkDayOfWeek(int todayOfWeek, String[] workDayFromTo) throws ParseException {
-        int workDayFrom = parseDayOfWeek(workDayFromTo[0]);
-        int workDayTo = parseDayOfWeek(workDayFromTo[1]);
-        if (workDayFrom <= todayOfWeek && todayOfWeek <= workDayTo) {
-            return true;
-        } else {
-            return false;
-        }
+    private boolean checkDayOfWeek(int todayOfWeek, String workDayFrom, String workDayTo) throws ParseException {
+        int parsedWorkDayFrom = parseDayOfWeek(workDayFrom);
+        int parsedWorkDayTo = parseDayOfWeek(workDayTo);
+        //From<=Toの関係じゃないと機能しない(From>Toの場合には非対応)
+        return parsedWorkDayFrom <= todayOfWeek && todayOfWeek <= parsedWorkDayTo;
     }
 
     private static int parseDayOfWeek(String day) throws ParseException {
@@ -285,26 +284,21 @@ public class MainActivity extends AppCompatActivity {
         return dayOfWeek;
     }
 
-    private void showDialog(String message) {
-//        AlertDialog.Builder builder = new AlertDialog.Builder(getApplicationContext());//MainActivity.thisを指定しないとクラッシュする
-        AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
-        builder.setMessage(message)
-                .setPositiveButton(R.string.dialog_button_ok, new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int id) {
-                        dialog.dismiss();
-                    }
-                });
+    //TODO lambda->OK
+    private void showDialog(String title, String message) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle(title)
+                .setMessage(message)
+                .setPositiveButton(R.string.dialog_button_ok, (dialog, id) -> dialog.dismiss());
         builder.show();
     }
 
-    private void showDialogAndFinish(String message) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
-        builder.setMessage(message)
-                .setPositiveButton(R.string.dialog_button_ok, new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int id) {
-                        finishAndRemoveTask();//これでいいかどうか確認
-                    }
-                });
+    //TODO lambda->OK
+    private void showDialogAndFinish(String title,String message) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle(title)
+                .setMessage(message)
+                .setPositiveButton(R.string.dialog_button_ok, (dialog, id) -> finishAndRemoveTask());
         builder.show();
     }
 
