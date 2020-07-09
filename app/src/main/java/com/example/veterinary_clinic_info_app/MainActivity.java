@@ -1,13 +1,10 @@
 package com.example.veterinary_clinic_info_app;
 
-import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import android.content.DialogInterface;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -25,13 +22,10 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.time.DayOfWeek;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
-import java.util.Locale;
 import java.util.TimeZone;
 
 import okhttp3.Call;
@@ -51,6 +45,10 @@ public class MainActivity extends AppCompatActivity {
     private PetsAdapter petsAdapter;
     private List<Pet> pets = new ArrayList<>();
     private String WorkHours = "";
+    int parsedWorkDayFrom;
+    int parsedWorkDayTo;
+    Calendar parsedWorkHourFrom;
+    Calendar parsedWorkHourTo;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -58,8 +56,8 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         Log.i("TecnicTest", "onCreate");
-        textView = findViewById(R.id.text_info);
-        setWorkHours("----");
+        textView = findViewById(R.id.text_view_work_hours);
+        setTextViewWorkHours("----");
 
         buttonChat = findViewById(R.id.button_chat);
         buttonChat.setOnClickListener(v -> {
@@ -107,17 +105,23 @@ public class MainActivity extends AppCompatActivity {
                                 jsonObject.getBoolean("isCallEnabled"),
                                 jsonObject.getString("workHours"));
 
+                        //todo ここでparse処理する->OK
+                        WorkHours = config.getSettings().getWorkHours();
+                        parseWorkHours(WorkHours);
+
                         mainHandler.post(() -> {
                             setButtonVisible(buttonChat, config.getSettings().isChatEnabled());
                             setButtonVisible(buttonCall, config.getSettings().isCallEnabled());
-                            WorkHours = config.getSettings().getWorkHours();
-                            setWorkHours(WorkHours);
+                            setTextViewWorkHours(WorkHours);
                         });
 
                     } catch (JSONException je) {
                         //TODO Handle this exception
                         Log.i("TecnicTest", "Json parse error!");
-                        mainHandler.post(() -> showDialogAndFinish(getString(R.string.title_data_invalid),getString(R.string.error_message_json_invalid)));
+                        mainHandler.post(() -> showDialogAndFinish(getString(R.string.title_data_invalid), getString(R.string.error_message_json_invalid)));
+                    } catch (ParseException e) {
+                        //TODO Handle this exception
+                        Log.e("TecnicTest", "Json date parse error!" + e.getMessage());
                     }
 
 
@@ -209,70 +213,63 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void setWorkHours(String workHours) {
+    private void setTextViewWorkHours(String workHours) {
         textView.setText(String.format(getString(R.string.office_hours), workHours));
     }
 
+    private void parseWorkHours(String workHours) throws ParseException {
 
-    private void checkWorkHours(String workHours) {
-        Calendar calendarToday = Calendar.getInstance(TimeZone.getDefault());
-        int todayOfWeek = calendarToday.get(Calendar.DAY_OF_WEEK);
+        String[] workHoursSeparate = workHours.split(" ");
 
-        try {
-            String[] workHoursSeparate = workHours.split(" ");
+        //DayOfWeek
+        String workDayFrom = workHoursSeparate[0].split("-")[0];
+        String workDayTo = workHoursSeparate[0].split("-")[1];
+        parsedWorkDayFrom = parseDayOfWeek(workDayFrom);
+        parsedWorkDayTo = parseDayOfWeek(workDayTo);
 
-            //todo jsonデータからの切り出しはデータ取得時に移す。ここでは比較だけ
-            String workDayFrom = workHoursSeparate[0].split("-")[0];
-            String workDayTo = workHoursSeparate[0].split("-")[1];
-            boolean isBetweenDayOfWeek = checkDayOfWeek(todayOfWeek, workDayFrom,workDayTo);
-            if (!isBetweenDayOfWeek) {
-                showDialog(getString(R.string.title_closed),getString(R.string.message_outside_work_hours));
-                return;
-            }
-
-            boolean isBetweenHours = checkHours(calendarToday, workHoursSeparate[1],workHoursSeparate[3]);
-            if (!isBetweenHours) {
-                showDialog(getString(R.string.title_closed),getString(R.string.message_outside_work_hours));
-                return;
-            }
-
-            showDialog(getString(R.string.title_open),getString(R.string.message_within_work_hours));
-
-            //TODO exception
-        } catch (Exception e) {
-            Log.e("TecnicTest", "Json date parse error!" + e.getMessage());
-        }
+        //Hours
+        String workHourFrom = workHoursSeparate[1];
+        String workHourTo = workHoursSeparate[3];
+        parsedWorkHourFrom = parseHour(workHourFrom);
+        parsedWorkHourTo = parseHour(workHourTo);
 
     }
 
+    private void checkWorkHours(String workHours) {
+        //todo timezoneを別の国にしてテストする->OK
+        Calendar calendarToday = Calendar.getInstance(TimeZone.getDefault());
+        int todayOfWeek = calendarToday.get(Calendar.DAY_OF_WEEK);
+
+        //todo jsonデータからの切り出しはデータ取得時に移す。ここでは比較だけ->OK
+        boolean isBetweenDayOfWeek = checkDayOfWeek(todayOfWeek);
+        if (!isBetweenDayOfWeek) {
+            showDialog(getString(R.string.title_closed), getString(R.string.message_outside_work_hours));
+            return;
+        }
+
+        boolean isBetweenHours = checkHours(calendarToday);
+        if (!isBetweenHours) {
+            showDialog(getString(R.string.title_closed), getString(R.string.message_outside_work_hours));
+            return;
+        }
+
+        showDialog(getString(R.string.title_open), getString(R.string.message_within_work_hours));
+
+    }
+    private boolean checkDayOfWeek(int todayOfWeek) {
+        //todo From<=Toの関係じゃないと機能しない(From>Toの場合には非対応)
+        return parsedWorkDayFrom <= todayOfWeek && todayOfWeek <= parsedWorkDayTo;
+    }
+
     //TODO from, to param->OK
-    private boolean checkHours(Calendar calendarToday, String workHourFrom, String workHourTo) throws ParseException {
-
-        Calendar calendarFrom = parseHour(calendarToday, workHourFrom);
-        Calendar calendarTo = parseHour(calendarToday, workHourTo);
-
+//    private boolean checkHours(Calendar calendarToday, String workHourFrom, String workHourTo) throws ParseException {
+    private boolean checkHours(Calendar calendarToday) {
         //TODO inclusive from->【保留】多分秒まで見てるんで、実装しても検証が難しそう
-        if ((calendarToday.after(calendarFrom) && calendarToday.before(calendarTo))) {
+        if ((calendarToday.after(parsedWorkHourFrom) && calendarToday.before(parsedWorkHourTo))) {
             return true;
         } else {
             return false;
         }
-    }
-
-    private Calendar parseHour(Calendar calendarToday, String workHour) throws ParseException {
-        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("HH:mm");
-        Date dateFormatHours = simpleDateFormat.parse(workHour);
-        Calendar calendar = Calendar.getInstance(TimeZone.getDefault());
-        calendar.setTime(dateFormatHours);
-        calendar.set(calendarToday.get(Calendar.YEAR), calendarToday.get(Calendar.MONTH), calendarToday.get(Calendar.DATE));
-        return calendar;
-    }
-
-    private boolean checkDayOfWeek(int todayOfWeek, String workDayFrom, String workDayTo) throws ParseException {
-        int parsedWorkDayFrom = parseDayOfWeek(workDayFrom);
-        int parsedWorkDayTo = parseDayOfWeek(workDayTo);
-        //From<=Toの関係じゃないと機能しない(From>Toの場合には非対応)
-        return parsedWorkDayFrom <= todayOfWeek && todayOfWeek <= parsedWorkDayTo;
     }
 
     private static int parseDayOfWeek(String day) throws ParseException {
@@ -282,6 +279,21 @@ public class MainActivity extends AppCompatActivity {
         calendar.setTime(date);
         int dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK);
         return dayOfWeek;
+    }
+
+    //todo 先にparseすることにしたので、calendarToday(ボタン押下時の日時)が渡せなくなった。よって、画面起動時とボタン押下時で日付が変わると多分チェック上手くいかないけど、多分そこまで考えなくていいはずなのでこのやり方にする
+    //    private Calendar parseHour(Calendar calendarToday, String workHour) throws ParseException {
+    private Calendar parseHour(String workHour) throws ParseException {
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("HH:mm");
+        Date dateFormatHours = simpleDateFormat.parse(workHour);
+        Calendar calendar = Calendar.getInstance(TimeZone.getDefault());
+        calendar.setTime(dateFormatHours);
+//        calendar.set(calendarToday.get(Calendar.YEAR), calendarToday.get(Calendar.MONTH), calendarToday.get(Calendar.DATE));
+        Log.i("TecnicTest", "parseHour : Calendar.YEAR " + Calendar.getInstance(TimeZone.getDefault()).get(Calendar.YEAR));
+        Log.i("TecnicTest", "parseHour : Calendar.MONTH " + Calendar.getInstance(TimeZone.getDefault()).get(Calendar.MONTH));
+        Log.i("TecnicTest", "parseHour : Calendar.DATE " + Calendar.getInstance(TimeZone.getDefault()).get(Calendar.DATE));
+        calendar.set(Calendar.getInstance(TimeZone.getDefault()).get(Calendar.YEAR), Calendar.getInstance(TimeZone.getDefault()).get(Calendar.MONTH), Calendar.getInstance(TimeZone.getDefault()).get(Calendar.DATE));
+        return calendar;
     }
 
     //TODO lambda->OK
@@ -294,7 +306,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     //TODO lambda->OK
-    private void showDialogAndFinish(String title,String message) {
+    private void showDialogAndFinish(String title, String message) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle(title)
                 .setMessage(message)

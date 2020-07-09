@@ -58,7 +58,7 @@ public class AsyncHttpRequest extends AsyncTask<String,Void,JSONObject> {
         }
 
         //仮です
-        TextView tv = activity.findViewById(R.id.text_info);
+        TextView tv = activity.findViewById(R.id.text_view_work_hours);
         tv.setText(String.format(activity.getApplicationContext().getString(R.string.office_hours),"json data!!"));
         //仮です
 

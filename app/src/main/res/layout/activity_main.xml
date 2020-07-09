@@ -12,7 +12,7 @@
         android:id="@+id/container_for_button"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        app:layout_constraintBottom_toTopOf="@id/text_info"
+        app:layout_constraintBottom_toTopOf="@id/text_view_work_hours"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent"
@@ -60,7 +60,7 @@
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <TextView
-        android:id="@+id/text_info"
+        android:id="@+id/text_view_work_hours"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_marginVertical="10dp"
@@ -85,7 +85,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/text_info"
+        app:layout_constraintTop_toBottomOf="@id/text_view_work_hours"
         app:layout_constraintVertical_weight="0.8" />
 
     <ProgressBar
@@ -109,7 +109,7 @@
         app:layout_constraintBottom_toTopOf="@id/recycler_view_pets"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/text_info"
+        app:layout_constraintTop_toBottomOf="@id/text_view_work_hours"
         android:indeterminate="true"
         android:visibility="invisible"/>
 
