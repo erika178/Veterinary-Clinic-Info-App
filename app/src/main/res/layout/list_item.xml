@@ -1,19 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/parent"
     android:layout_width="match_parent"
     android:layout_height="wrap_content">
 
     <View
+        android:id="@+id/line_horizontal"
         android:layout_width="wrap_content"
         android:layout_height="1dp"
-        android:id="@+id/line_horizontal"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/imageItem"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
+        android:background="@color/colorDarkGray"
         android:visibility="visible"
-        android:background="@color/colorDarkGray"/>
+        app:layout_constraintBottom_toTopOf="@id/imageItem"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <androidx.appcompat.widget.AppCompatImageView
         android:id="@+id/imageItem"
@@ -29,13 +30,14 @@
         android:id="@+id/textTitle"
         android:layout_width="0dp"
         android:layout_height="100dp"
-        android:text="@string/unknown"
-        android:textColor="@color/colorBlack"
-        android:gravity="center_vertical"
-        android:textStyle="bold"
+        android:paddingLeft="10dp"
         android:autoSizeMaxTextSize="20sp"
         android:autoSizeMinTextSize="10sp"
         android:autoSizeTextType="uniform"
+        android:gravity="center_vertical"
+        android:text="@string/unknown"
+        android:textColor="@color/colorBlack"
+        android:textStyle="bold"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintLeft_toRightOf="@id/imageItem"
         app:layout_constraintRight_toRightOf="parent"

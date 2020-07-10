@@ -5,31 +5,29 @@ import android.graphics.Bitmap;
 import java.util.Date;
 
 public class Pet {
-    //todo camelcase
-    private String image_url;
+    private String imageUrl;
     private String title;
-    private String content_url;
+    private String contentUrl;
     private Date dateAdded;
     private Bitmap bitmap;
 
-    public Pet(String image_url, String title, String content_url, Date dateAdded, Bitmap bitmap) {
-        this.image_url = image_url;
+    public Pet(String imageUrl, String title, String contentUrl, Date dateAdded) {
+        this.imageUrl = imageUrl;
         this.title = title;
-        this.content_url = content_url;
+        this.contentUrl = contentUrl;
         this.dateAdded = dateAdded;
-        this.bitmap = bitmap;
     }
 
-    public String getImage_url() {
-        return image_url;
+    public String getImageUrl() {
+        return imageUrl;
     }
 
     public String getTitle() {
         return title;
     }
 
-    public String getContent_url() {
-        return content_url;
+    public String getContentUrl() {
+        return contentUrl;
     }
 
     public Date getDateAdded() {
@@ -38,5 +36,9 @@ public class Pet {
 
     public Bitmap getBitmap() {
         return bitmap;
+    }
+
+    public void setBitmap(Bitmap bitmap) {
+        this.bitmap = bitmap;
     }
 }
