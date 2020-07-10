@@ -5,6 +5,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -20,6 +22,10 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -44,7 +50,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView textView;
     private PetsAdapter petsAdapter;
     private List<Pet> pets = new ArrayList<>();
-    private String WorkHours = "";
+    private Bitmap petBitmap;
     int parsedWorkDayFrom;
     int parsedWorkDayTo;
     Calendar parsedWorkHourFrom;
@@ -61,12 +67,12 @@ public class MainActivity extends AppCompatActivity {
 
         buttonChat = findViewById(R.id.button_chat);
         buttonChat.setOnClickListener(v -> {
-            checkWorkHours(WorkHours);
+            checkWorkHours();
         });
 
         buttonCall = findViewById(R.id.button_call);
         buttonCall.setOnClickListener(v -> {
-            checkWorkHours(WorkHours);
+            checkWorkHours();
         });
 
         progressBarConfig = findViewById(R.id.progressBarHorizontalConfig);
@@ -77,7 +83,7 @@ public class MainActivity extends AppCompatActivity {
         RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(this);
         recyclerView.setLayoutManager(layoutManager);
 
-        petsAdapter = new PetsAdapter(pets);
+        petsAdapter = new PetsAdapter(this,pets);
         recyclerView.setAdapter(petsAdapter);
 
         client = new OkHttpClient();
@@ -105,8 +111,7 @@ public class MainActivity extends AppCompatActivity {
                                 jsonObject.getBoolean("isCallEnabled"),
                                 jsonObject.getString("workHours"));
 
-                        //todo ここでparse処理する->OK
-                        WorkHours = config.getSettings().getWorkHours();
+                        String WorkHours = config.getSettings().getWorkHours();
                         parseWorkHours(WorkHours);
 
                         mainHandler.post(() -> {
@@ -116,17 +121,16 @@ public class MainActivity extends AppCompatActivity {
                         });
 
                     } catch (JSONException je) {
-                        //TODO Handle this exception
-                        Log.i("TecnicTest", "Json parse error!");
-                        mainHandler.post(() -> showDialogAndFinish(getString(R.string.title_data_invalid), getString(R.string.error_message_json_invalid)));
+                        //TODO Handle this exception->確認済
+                        mainHandler.post(() -> showDialogAndFinish(getString(R.string.title_data_format_invalid), getString(R.string.error_message_json_format_invalid)));
                     } catch (ParseException e) {
-                        //TODO Handle this exception
-                        Log.e("TecnicTest", "Json date parse error!" + e.getMessage());
+                        //TODO Handle this exception->確認済
+                        mainHandler.post(() -> showDialogAndFinish(getString(R.string.title_data_value_invalid), getString(R.string.error_message_data_value_invalid)));
                     }
 
-
                 } else {
-                    //TODO Handle this exception
+                    //TODO Handle this exception->確認済
+                    mainHandler.post(() -> showDialogAndFinish(getString(R.string.title_http_response_invalid), getString(R.string.error_message_http_response_invalid)));
                 }
 
                 mainHandler.post(() -> hideProgress(progressBarConfig));
@@ -134,9 +138,11 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onFailure(@NotNull Call call, @NotNull IOException e) {
-                //TODO Handle this exception
-                Log.i("TecnicTest", "onFailure " + e.getMessage());
-                mainHandler.post(() -> hideProgress(progressBarConfig));
+                //TODO Handle this exception->確認済
+                mainHandler.post(() -> {
+                    hideProgress(progressBarConfig);
+                    showDialogAndFinish(getString(R.string.title_network_error), getString(R.string.error_message_network_error));
+                });
             }
         });
     }
@@ -162,10 +168,13 @@ public class MainActivity extends AppCompatActivity {
                         for (int i = 0; i < jsonArray.length(); i++) {
                             JSONObject jsonObject = jsonArray.getJSONObject(i);
 
+                            petBitmap = getBitMapData(jsonObject.getString("image_url"));
+
                             Pet pet = new Pet(jsonObject.getString("image_url"),
                                     jsonObject.getString("title"),
                                     jsonObject.getString("content_url"),
-                                    simpleDateFormat.parse(jsonObject.getString("date_added")));
+                                    simpleDateFormat.parse(jsonObject.getString("date_added")),
+                                    petBitmap);
                             pets.add(pet);
                         }
 
@@ -173,14 +182,15 @@ public class MainActivity extends AppCompatActivity {
 
                     } catch (JSONException je) {
                         //TODO Handle this exception
-                        Log.e("TecnicTest", "Json parse error!");
+                        mainHandler.post(() -> showDialogAndFinish(getString(R.string.title_data_format_invalid), getString(R.string.error_message_json_format_invalid)));
                     } catch (ParseException e) {
                         //TODO Handle this exception
-                        Log.i("TecnicTest", "Json date parse error!" + e.getMessage());
+                        mainHandler.post(() -> showDialogAndFinish(getString(R.string.title_data_value_invalid), getString(R.string.error_message_data_value_invalid)));
                     }
 
                 } else {
                     //TODO Handle this exception
+                    mainHandler.post(() -> showDialogAndFinish(getString(R.string.title_http_response_invalid), getString(R.string.error_message_http_response_invalid)));
                 }
                 mainHandler.post(() -> hideProgress(progressBarPets));
             }
@@ -188,12 +198,38 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onFailure(@NotNull Call call, @NotNull IOException e) {
                 //TODO Handle this exception
-                Log.i("TecnicTest", "onFailure " + e.getMessage());
-                mainHandler.post(() -> hideProgress(progressBarPets));
+                mainHandler.post(() -> {
+                    hideProgress(progressBarConfig);
+                    showDialogAndFinish(getString(R.string.title_network_error), getString(R.string.error_message_network_error));
+                });
             }
         });
 
         Log.i("TecnicTest", "after enqueue");
+    }
+
+    //todo キャッシュ処理については調べきれてない
+    //todo ここが非同期じゃないから遅いの？
+    //todo ここのcatchも全部親側で拾うべき？
+    private Bitmap getBitMapData(String imageUrl) {
+        URL url;
+        Bitmap bitmap = null;
+        try {
+            url = new URL(imageUrl);
+
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setDoInput(true);
+            connection.connect();
+            InputStream input = connection.getInputStream();
+
+            bitmap = BitmapFactory.decodeStream(input);
+        } catch (MalformedURLException e) {
+            Log.e("TecnicTest", "MalformedURLException : " + e.getMessage());
+        } catch (IOException e) {
+            Log.e("TecnicTest", "IOException : " + e.getMessage());
+        }
+
+        return bitmap;
     }
 
     private void showProgress(ProgressBar progressBar) {
@@ -217,8 +253,8 @@ public class MainActivity extends AppCompatActivity {
         textView.setText(String.format(getString(R.string.office_hours), workHours));
     }
 
+    //todo 余裕あればparse...を移動する
     private void parseWorkHours(String workHours) throws ParseException {
-
         String[] workHoursSeparate = workHours.split(" ");
 
         //DayOfWeek
@@ -232,23 +268,18 @@ public class MainActivity extends AppCompatActivity {
         String workHourTo = workHoursSeparate[3];
         parsedWorkHourFrom = parseHour(workHourFrom);
         parsedWorkHourTo = parseHour(workHourTo);
-
     }
 
-    private void checkWorkHours(String workHours) {
-        //todo timezoneを別の国にしてテストする->OK
+    private void checkWorkHours() {
         Calendar calendarToday = Calendar.getInstance(TimeZone.getDefault());
         int todayOfWeek = calendarToday.get(Calendar.DAY_OF_WEEK);
 
-        //todo jsonデータからの切り出しはデータ取得時に移す。ここでは比較だけ->OK
-        boolean isBetweenDayOfWeek = checkDayOfWeek(todayOfWeek);
-        if (!isBetweenDayOfWeek) {
+        if (!isBetweenDaysOfWeek(todayOfWeek)) {
             showDialog(getString(R.string.title_closed), getString(R.string.message_outside_work_hours));
             return;
         }
 
-        boolean isBetweenHours = checkHours(calendarToday);
-        if (!isBetweenHours) {
+        if (!isBetweenHours(calendarToday)) {
             showDialog(getString(R.string.title_closed), getString(R.string.message_outside_work_hours));
             return;
         }
@@ -256,20 +287,13 @@ public class MainActivity extends AppCompatActivity {
         showDialog(getString(R.string.title_open), getString(R.string.message_within_work_hours));
 
     }
-    private boolean checkDayOfWeek(int todayOfWeek) {
+    private boolean isBetweenDaysOfWeek(int todayOfWeek) {
         //todo From<=Toの関係じゃないと機能しない(From>Toの場合には非対応)
         return parsedWorkDayFrom <= todayOfWeek && todayOfWeek <= parsedWorkDayTo;
     }
 
-    //TODO from, to param->OK
-//    private boolean checkHours(Calendar calendarToday, String workHourFrom, String workHourTo) throws ParseException {
-    private boolean checkHours(Calendar calendarToday) {
-        //TODO inclusive from->【保留】多分秒まで見てるんで、実装しても検証が難しそう
-        if ((calendarToday.after(parsedWorkHourFrom) && calendarToday.before(parsedWorkHourTo))) {
-            return true;
-        } else {
-            return false;
-        }
+    private boolean isBetweenHours(Calendar calendarToday) {
+        return (calendarToday.after(parsedWorkHourFrom) && calendarToday.before(parsedWorkHourTo));
     }
 
     private static int parseDayOfWeek(String day) throws ParseException {
@@ -283,6 +307,7 @@ public class MainActivity extends AppCompatActivity {
 
     //todo 先にparseすることにしたので、calendarToday(ボタン押下時の日時)が渡せなくなった。よって、画面起動時とボタン押下時で日付が変わると多分チェック上手くいかないけど、多分そこまで考えなくていいはずなのでこのやり方にする
     //    private Calendar parseHour(Calendar calendarToday, String workHour) throws ParseException {
+    // ->ここもFrom<=To関係時のみOK
     private Calendar parseHour(String workHour) throws ParseException {
         SimpleDateFormat simpleDateFormat = new SimpleDateFormat("HH:mm");
         Date dateFormatHours = simpleDateFormat.parse(workHour);
@@ -296,7 +321,6 @@ public class MainActivity extends AppCompatActivity {
         return calendar;
     }
 
-    //TODO lambda->OK
     private void showDialog(String title, String message) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle(title)
@@ -305,7 +329,6 @@ public class MainActivity extends AppCompatActivity {
         builder.show();
     }
 
-    //TODO lambda->OK
     private void showDialogAndFinish(String title, String message) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle(title)

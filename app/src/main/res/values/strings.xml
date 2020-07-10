@@ -6,9 +6,15 @@
     <string name="unknown">Unknown</string>
     <string name="message_outside_work_hours">Work hours has ended. Please contact us again on the next work day.</string>
     <string name="message_within_work_hours">Thank you for getting in touch with us. We’ll get back to you as soon as possible.</string>
-    <string name="error_message_json_invalid">Because the acquired data is invalid, the application will be terminated.</string>
+    <string name="error_message_json_format_invalid">Because the acquired data　format is invalid, the application will be terminated.</string>
+    <string name="error_message_data_value_invalid">Because the acquired data　value is invalid, the application will be terminated.</string>
+    <string name="error_message_http_response_invalid">Because the Data acquisition is failure, the application will be terminated.</string>
+    <string name="error_message_network_error">Because the network error occurred, the application will be terminated.\nPlease check the network status and try again.</string>
     <string name="dialog_button_ok">OK</string>
     <string name="title_closed">We\'re closed.</string>
     <string name="title_open">We\'re open.</string>
-    <string name="title_data_invalid">Data invalid error</string>
+    <string name="title_data_format_invalid">Data format invalid error</string>
+    <string name="title_data_value_invalid">Data value invalid error</string>
+    <string name="title_http_response_invalid">Data acquisition failure</string>
+    <string name="title_network_error">Network error</string>
 </resources>

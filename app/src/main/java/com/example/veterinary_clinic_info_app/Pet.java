@@ -1,5 +1,7 @@
 package com.example.veterinary_clinic_info_app;
 
+import android.graphics.Bitmap;
+
 import java.util.Date;
 
 public class Pet {
@@ -8,12 +10,14 @@ public class Pet {
     private String title;
     private String content_url;
     private Date dateAdded;
+    private Bitmap bitmap;
 
-    public Pet(String image_url, String title, String content_url, Date dateAdded) {
+    public Pet(String image_url, String title, String content_url, Date dateAdded, Bitmap bitmap) {
         this.image_url = image_url;
         this.title = title;
         this.content_url = content_url;
         this.dateAdded = dateAdded;
+        this.bitmap = bitmap;
     }
 
     public String getImage_url() {
@@ -30,5 +34,9 @@ public class Pet {
 
     public Date getDateAdded() {
         return dateAdded;
+    }
+
+    public Bitmap getBitmap() {
+        return bitmap;
     }
 }
