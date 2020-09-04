@@ -18,10 +18,6 @@ public class PetContentsFragment extends Fragment {
     private String contentUrl;
     private ProgressBar progressBar;
 
-    private PetContentsFragment() {
-        // Required empty public constructor
-    }
-
     public static PetContentsFragment newInstance(String contentUrl) {
         PetContentsFragment fragment = new PetContentsFragment();
         Bundle args = new Bundle();
