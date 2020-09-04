@@ -98,7 +98,7 @@ public class MainActivity extends AppCompatActivity {
         showProgress(progressBarConfig);
 
         Request requestConfig = new Request.Builder()
-                .url("https://www.amock.io/api/erika178/config.json")
+                .url("https://demo3248394.mockable.io/config")
                 .build();
 
         client.newCall(requestConfig).enqueue(new Callback() {
@@ -149,7 +149,7 @@ public class MainActivity extends AppCompatActivity {
         showProgress(progressBarPets);
 
         Request requestPets = new Request.Builder()
-                .url("https://www.amock.io/api/erika178/pets.json")
+                .url("https://demo3248394.mockable.io/pets")
                 .build();
 
         client.newCall(requestPets).enqueue(new Callback() {
