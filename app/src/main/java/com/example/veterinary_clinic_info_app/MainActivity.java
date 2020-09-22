@@ -16,7 +16,7 @@ public class MainActivity extends AppCompatActivity {
         Log.i("TecnicTest","MainActivity : onCreate");
 
         //todo ここの引数いらない
-        showMainFragment("hoge","huga");
+        showMainFragment("param1","param2");
     }
 
     private void showMainFragment(String param1, String param2) {
